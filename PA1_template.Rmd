@@ -1,25 +1,169 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Activity Report"
+author: "DaniGCFH"
+date: "2024-01-17"
+output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
 
-## Loading and preprocessing the data
+library(dplyr)
 
-
+```
 
 ## What is mean total number of steps taken per day?
 
+For this part of the assignment, I'll first read the data and process it to have a view on the daily steps as shown in the histogram.
 
+```{r daily activity}
+data <- read.csv("activity.csv")
+data$date <- as.Date(data$date)
+days <- unique(data$date)
+df <- data.frame(matrix(ncol=2))
+colnames(df) <- c("days", "steps")
+
+for (day in days){
+  steps<-sum(data$steps[data$date==day])
+  if (is.na(df$days[1])==TRUE){
+    df$days <- as.Date(day)
+    df$steps <- as.numeric(steps)
+  }
+  else{
+    row <- c(as.Date(day), as.numeric(steps))
+    df <- rbind(df, row)
+  }
+}
+
+hist(df$steps, xlab = "Number of steps", main = NULL)
+knitr::opts_chunk$set(echo = FALSE)
+
+
+```
+
+The median number of steps taken is `r median(df$steps, na.rm=TRUE)`and the mean number of steps taken is `r mean(df$steps, na.rm=TRUE)`
 
 ## What is the average daily activity pattern?
 
+For this part of the assignment, I repeated the data processing, this time by interval, to produce the required plot.
 
+```{r base activity pattern}
+intervals <- unique(data$interval)
+di <- data.frame(matrix(ncol=2))
+colnames(di) <- c("interval", "steps")
+
+for (interval in intervals){
+  steps<-mean(data$steps[data$interval==interval], na.rm=TRUE)
+  if (is.na(di$interval[1])==TRUE){
+    di$interval <- as.numeric(interval)
+    di$steps <- as.numeric(steps)
+  }
+  else{
+    row <- c(as.numeric(interval), as.numeric(steps))
+    di <- rbind(di, row)
+  }
+}
+
+plot(di, type="l", xlab= "Interval", ylab = "Average Number of Steps")
+knitr::opts_chunk$set(echo = FALSE)
+
+
+```
+
+The 5 minute interval with the maximum average number of steps accross all the days in the dataset is the interval number `r di$interval[di$steps==max(di$steps)]`
 
 ## Imputing missing values
 
+```{r missing values}
 
+rowNA <- table(!complete.cases(data))
+knitr::opts_chunk$set(echo = FALSE)
+
+```
+
+The number of rows with missing values is `r rowNA[2]`
+
+To fill the missing values in the dataset, I replaced all missing values for the average number of steps per interval.
+
+```{r replacing}
+data1 <- data
+for (i in c(1:17568)){
+  if (is.na(data1$steps[i])){
+    data1$steps[i] <- di$steps[di$interval==data1$interval[i]]
+  }
+}
+
+days <- unique(data1$date)
+df1 <- data.frame(matrix(ncol=2))
+colnames(df1) <- c("days", "steps")
+
+for (day in days){
+  steps<-sum(data1$steps[data1$date==day])
+  if (is.na(df1$days[1])==TRUE){
+    df1$days <- as.Date(day)
+    df1$steps <- as.numeric(steps)
+  }
+  else{
+    row <- c(as.Date(day), as.numeric(steps))
+    df1 <- rbind(df1, row)
+  }
+}
+hist(df1$steps, xlab = "Number of steps", main = NULL)
+knitr::opts_chunk$set(echo = FALSE)
+
+
+```
+
+The median number of steps taken is `r median(df1$steps, na.rm=TRUE)` and the mean number of steps taken is `r mean(df1$steps, na.rm=TRUE)`
+
+These results are very close from the initial results, but differ in that the median value now is equal to the mean value.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+For this part of the assignment, I repeated the data processing while subsetting the database between weekdays and weekends.
+
+```{r dif patterns}
+data$weekday <- weekdays(data$date)
+data$weekend[data$weekday =="Sunday" |data$weekday =="Saturday"] <- TRUE
+data$weekend[data$weekday !="Sunday" & data$weekday !="Saturday"] <- FALSE
+weekday <- subset(data, weekend==FALSE)
+weekend<- subset(data, weekend==TRUE)
+intervals <- unique(data$interval)
+dend <- data.frame(matrix(ncol=2))
+dday <- data.frame(matrix(ncol=2))
+colnames(dend) <- c("interval", "steps")
+colnames(dday) <- c("interval", "steps")
+
+for (interval in intervals){
+  steps<-mean(weekday$steps[weekday$interval==interval], na.rm=TRUE)
+  if (is.na(dday$interval[1])==TRUE){
+    dday$interval <- as.numeric(interval)
+    dday$steps <- as.numeric(steps)
+  }
+  else{
+    row <- c(as.numeric(interval), as.numeric(steps))
+    dday <- rbind(dday, row)
+  }
+}
+
+for (interval in intervals){
+  steps<-mean(weekend$steps[weekend$interval==interval], na.rm=TRUE)
+  if (is.na(dend$interval[1])==TRUE){
+    dend$interval <- as.numeric(interval)
+    dend$steps <- as.numeric(steps)
+  }
+  else{
+    row <- c(as.numeric(interval), as.numeric(steps))
+    dend <- rbind(dend, row)
+  }
+}
+
+par(mfcol = c(2,1)) 
+plot(dday$interval, dday$steps, type="l", xlab= "Interval", ylab = "Average Number of Steps")
+plot(dend$interval, dend$steps, type="l", xlab= "Interval", ylab = "Average Number of Steps")
+knitr::opts_chunk$set(echo = FALSE)
+
+
+```
+
+The plot show that the weekdays have a single peak in steps while the weekends seem to have multiple peaks accros the day
